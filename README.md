@@ -12,7 +12,8 @@ Backend API for the **ProlineX crash game**.
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Current game architecture and request flow |
 | [docs/DATABASE_LAYERS.md](docs/DATABASE_LAYERS.md) | Local schema ownership |
 | [docs/PRODUCTION.md](docs/PRODUCTION.md) | Deploy, env, webhooks |
-| `Dockerfile` | Production container (migrations on start) |
+| `render.yaml` | Render Blueprint (Node runtime + Postgres) |
+| `docker/Dockerfile` | Local docker-compose only |
 | `.env.production.example` | Production env template |
 
 Frontend architecture: `prolinexgoal/docs/ARCHITECTURE.md`
