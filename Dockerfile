@@ -9,7 +9,7 @@ COPY package.json package-lock.json prisma.config.ts ./
 COPY prisma ./prisma
 ENV DATABASE_URL="postgresql://build:build@127.0.0.1:5432/build"
 ENV DIRECT_URL="postgresql://build:build@127.0.0.1:5432/build"
-RUN npm ci
+RUN npm ci --ignore-scripts && npx prisma generate
 
 FROM node:22-bookworm-slim AS builder
 WORKDIR /app
