@@ -1,49 +1,54 @@
-# Render deployment (API)
+# Render — get the API working
 
-## Why deploys failed
+## One-time: Blueprint (recommended)
 
-1. **`DATABASE_URL` missing** — Postgres was not linked to the web service (common when using Docker without Blueprint env).
-2. **Root `Dockerfile` auto-detected** — Render built Docker instead of using `render.yaml` Node settings, so `fromDatabase` env vars were never applied.
-3. **Invalid blueprint property** — `internalConnectionString` is not valid; use `connectionString` (private network URL).
+1. [Render](https://dashboard.render.com/) → **New** → **Blueprint**
+2. Repo: **Merrick17/rolinex-goal-api**
+3. Apply — creates **prolinex-db** + **prolinex-goal-api** with `DATABASE_URL` linked
+4. Wait until **Live**
+5. **Shell** on the web service:
 
-## Recommended fix (cleanest)
+```bash
+npm run seed:demo
+```
 
-### Option A — New Blueprint (best)
+## Manual service (if Blueprint already exists)
 
-1. Delete the old **Docker** web service on Render (keep Postgres if you want the data).
-2. [Render Dashboard](https://dashboard.render.com/) → **New** → **Blueprint**
-3. Connect **Merrick17/rolinex-goal-api**
-4. When prompted, set:
-   - `CORS_ORIGIN` = `https://prolinexgoal.vercel.app`
-   - `API_PUBLIC_URL` = `https://<your-service>.onrender.com`
-   - `SENTINELGATE_SUCCESS_URL` / `SENTINELGATE_CANCEL_URL` = your Vercel wallet URLs
-5. Wait for deploy (migrations run via `npm run start:render`).
-6. **Shell**: `npx ts-node prisma/seed-demo.ts`
+| Setting | Value |
+|---------|--------|
+| **Runtime** | Node |
+| **Build** | `npm ci && npm run build` |
+| **Pre-deploy** | `sh scripts/render-migrate.sh` |
+| **Start** | `node dist/src/main.js` |
+| **Health check** | `/api/health` |
 
-### Option B — Keep existing web service
+**Environment** (required):
 
-1. **Environment** → **Add Environment Variable** → **Add from database**
-2. Select Postgres → key **`DATABASE_URL`**
-3. **Settings** → change **Runtime** from Docker to **Node**
-4. Set:
-   - **Build command**: `npm ci && npm run build`
-   - **Start command**: `npm run start:render`
-5. **Save** → **Manual Deploy**
+| Key | How |
+|-----|-----|
+| `DATABASE_URL` | **Add from database** → your Postgres |
+| `DIRECT_URL` | Same as `DATABASE_URL` (or leave empty) |
+| `NODE_ENV` | `production` |
+| `DEPLOY_PROFILE` | `public-test` |
+| `CORS_ORIGIN` | `https://prolinexgoal.vercel.app` |
+| `JWT_SECRET` / `JWT_REFRESH_SECRET` | Generate (32+ chars) |
 
-Do **not** set `PORT` manually — Render injects it.
+`API_PUBLIC_URL` is auto-set from `RENDER_EXTERNAL_URL` when missing.
 
 ## Verify
 
-Logs should show:
-
-```text
-[render-migrate] Applying migrations...
-[render-migrate] Migrations OK.
-Application is running on: http://localhost:10000
+```bash
+curl https://YOUR-SERVICE.onrender.com/api/health
+curl https://YOUR-SERVICE.onrender.com/api/health/ready
 ```
 
-Health: `https://YOUR-SERVICE.onrender.com/api/health/ready`
+Login: `demo@prolinexgoal.demo` / `DemoGoal26!` (after seed)
 
-## Demo user
+## Frontend (Vercel)
 
-`demo@prolinexgoal.demo` / `DemoGoal26!`
+```env
+NEXT_PUBLIC_API_URL=https://YOUR-SERVICE.onrender.com/api
+NEXT_PUBLIC_WS_URL=https://YOUR-SERVICE.onrender.com
+```
+
+Redeploy Vercel after changing `NEXT_PUBLIC_*`.

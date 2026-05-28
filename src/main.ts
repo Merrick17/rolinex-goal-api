@@ -4,12 +4,14 @@ import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as dotenv from 'dotenv';
 import { AllExceptionsFilter } from './all-exceptions.filter';
+import { bootstrapRuntimeEnv } from './config/bootstrap-env';
 import {
   assertProductionEnvironment,
   getCorsOrigins,
 } from './config/production-guard';
 
 dotenv.config();
+bootstrapRuntimeEnv();
 assertProductionEnvironment();
 
 async function bootstrap() {
@@ -72,8 +74,11 @@ async function bootstrap() {
     SwaggerModule.setup('api/docs', app, document);
   }
 
-  await app.listen(port);
-  const base = `http://localhost:${port}`;
+  await app.listen(port, '0.0.0.0');
+  const base =
+    process.env.API_PUBLIC_URL?.replace(/\/$/, '') ??
+    process.env.RENDER_EXTERNAL_URL?.replace(/\/$/, '') ??
+    `http://localhost:${port}`;
   console.log(`Application is running on: ${base}`);
   if (enableSwagger) {
     console.log(`Swagger UI: ${base}/api/docs`);

@@ -26,7 +26,7 @@ export function assertProductionEnvironment(): void {
   }
 
   const cors = process.env.CORS_ORIGIN?.trim();
-  if (!cors || cors === '*') {
+  if ((!cors || cors === '*') && !publicTest) {
     errors.push(
       'CORS_ORIGIN must list your frontend origin(s), comma-separated (not *)',
     );

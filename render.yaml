@@ -1,8 +1,5 @@
 # Render Blueprint — Merrick17/rolinex-goal-api
-# New → Blueprint → connect this repo (creates Postgres + API with DATABASE_URL linked).
-#
-# If you already have a Docker web service: delete it and re-apply this blueprint,
-# OR switch Settings → Runtime → Node and set build/start commands below.
+# Dashboard → New → Blueprint → connect repo (recommended).
 
 databases:
   - name: prolinex-db
@@ -18,8 +15,9 @@ services:
     plan: free
     region: frankfurt
     buildCommand: npm ci && npm run build
-    startCommand: npm run start:render
-    healthCheckPath: /api/health/ready
+    preDeployCommand: sh scripts/render-migrate.sh
+    startCommand: node dist/src/main.js
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
@@ -46,12 +44,10 @@ services:
       - key: PAYMENT_SIMULATION_INSTANT
         value: "true"
       - key: CORS_ORIGIN
-        sync: false
-      - key: API_PUBLIC_URL
-        sync: false
+        value: https://prolinexgoal.vercel.app
       - key: SENTINELGATE_SUCCESS_URL
-        sync: false
+        value: https://prolinexgoal.vercel.app/wallet/deposit/success
       - key: SENTINELGATE_CANCEL_URL
-        sync: false
+        value: https://prolinexgoal.vercel.app/wallet/deposit/cancel
       - key: ENABLE_SWAGGER
         value: "false"

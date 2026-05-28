@@ -15,6 +15,29 @@ if [ -z "$DATABASE_URL" ] && [ -z "$DIRECT_URL" ]; then
   exit 1
 fi
 
+# External Render Postgres URLs need SSL; internal dpg-* hostnames do not.
+maybe_ssl() {
+  url="$1"
+  case "$url" in
+    ""|*sslmode=*|*@dpg-*|*@localhost*|*@127.0.0.1*)
+      printf '%s' "$url"
+      ;;
+    *)
+      case "$url" in
+        *\?*) printf '%s&sslmode=require' "$url" ;;
+        *) printf '%s?sslmode=require' "$url" ;;
+      esac
+      ;;
+  esac
+}
+
+if [ -n "$DATABASE_URL" ]; then
+  export DATABASE_URL="$(maybe_ssl "$DATABASE_URL")"
+fi
+if [ -n "$DIRECT_URL" ]; then
+  export DIRECT_URL="$(maybe_ssl "$DIRECT_URL")"
+fi
+
 PRISMA_BIN="./node_modules/.bin/prisma"
 if [ ! -x "$PRISMA_BIN" ]; then
   PRISMA_BIN="npx prisma"
