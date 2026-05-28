@@ -12,6 +12,20 @@ fi
 
 if [ -z "$DATABASE_URL" ] && [ -z "$DIRECT_URL" ]; then
   log "ERROR: DATABASE_URL (or DIRECT_URL) is not set — cannot run migrations."
+  log ""
+  log "Fix on Render (required once per web service):"
+  log "  1. Dashboard → your API web service → Environment"
+  log "  2. Add Environment Variable → Add from database → select Postgres (prolinex-db)"
+  log "  3. Key: DATABASE_URL  (Render fills the internal connection string)"
+  log "  4. Optional: add DIRECT_URL the same way, or leave unset (entrypoint copies DATABASE_URL)"
+  log "  5. Save → Manual Deploy"
+  log ""
+  log "If you used Blueprint: Environment → Blueprint sync, or recreate the stack from render.yaml"
+  log "so fromDatabase links prolinex-db → DATABASE_URL."
+  log ""
+  if [ -n "$RENDER" ]; then
+    log "(Running on Render: RENDER=$RENDER — DB link is missing from this service config.)"
+  fi
   exit 1
 fi
 

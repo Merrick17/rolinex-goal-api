@@ -24,14 +24,15 @@ services:
         value: public-test
       - key: PORT
         value: "3001"
+      # Internal URL — web + DB must be same region (frankfurt). Required at runtime.
       - key: DATABASE_URL
         fromDatabase:
           name: prolinex-db
-          property: connectionString
+          property: internalConnectionString
       - key: DIRECT_URL
         fromDatabase:
           name: prolinex-db
-          property: connectionString
+          property: internalConnectionString
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_REFRESH_SECRET
