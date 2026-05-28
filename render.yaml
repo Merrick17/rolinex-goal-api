@@ -1,0 +1,53 @@
+# Render Blueprint — connect repo in dashboard → New → Blueprint
+# https://render.com/docs/blueprint-spec
+
+databases:
+  - name: prolinex-db
+    plan: free
+    databaseName: prolinex
+    user: prolinex
+
+services:
+  - type: web
+    name: prolinex-goal-api
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /api/health/ready
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DEPLOY_PROFILE
+        value: public-test
+      - key: DATABASE_URL
+        fromDatabase:
+          name: prolinex-db
+          property: connectionString
+      - key: DIRECT_URL
+        fromDatabase:
+          name: prolinex-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_EXPIRY
+        value: 15m
+      - key: JWT_REFRESH_EXPIRY
+        value: 7d
+      - key: GAME_ENGINE_ENABLED
+        value: "true"
+      - key: PAYMENT_SIMULATION_INSTANT
+        value: "true"
+      - key: CORS_ORIGIN
+        sync: false
+      - key: API_PUBLIC_URL
+        sync: false
+      - key: SENTINELGATE_SUCCESS_URL
+        sync: false
+      - key: SENTINELGATE_CANCEL_URL
+        sync: false
+      - key: ENABLE_SWAGGER
+        value: "false"

@@ -17,11 +17,11 @@ export class UsersService {
       email: user.email,
       balance: Number(user.balance),
       currency: user.currency,
+      accountFrozen: user.accountFrozen,
       totalBets: stats.totalBets,
       totalWon: stats.totalWon,
       bestMultiplier: stats.bestMultiplier,
       createdAt: user.createdAt,
-      kycStatus: user.kycStatus,
     };
   }
 

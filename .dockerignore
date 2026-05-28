@@ -1,0 +1,15 @@
+node_modules
+dist
+coverage
+.git
+.github
+.env
+.env.*
+!.env.example
+!.env.production.example
+test
+**/*.spec.ts
+**/*.md
+!docs/PRODUCTION.md
+*.log
+.DS_Store

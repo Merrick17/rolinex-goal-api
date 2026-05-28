@@ -40,6 +40,9 @@ export class GameEngineService extends EventEmitter {
       roundNumber: this.currentRound.roundNumber,
       multiplier: this.multiplier,
       phase: this.phase,
+      ...(this.phase === 'waiting'
+        ? { countdown: Math.max(0, this.countdown) }
+        : {}),
     };
   }
 
@@ -49,6 +52,7 @@ export class GameEngineService extends EventEmitter {
 
   private async startWaiting() {
     this.phase = 'waiting';
+    this.roundsService.rotateServerSeed();
     const last = await this.prisma.round.findFirst({
       orderBy: { roundNumber: 'desc' },
     });
@@ -56,6 +60,7 @@ export class GameEngineService extends EventEmitter {
     const roundId = crypto.randomUUID();
     const { crashPoint, crashType } =
       this.roundsService.generateCrashPoint(roundId);
+    const serverSeedHash = this.roundsService.getServerSeedHash(roundId);
 
     const round = await this.prisma.round.create({
       data: {
@@ -63,7 +68,7 @@ export class GameEngineService extends EventEmitter {
         roundNumber: nextRoundNumber,
         crashPoint,
         crashType: crashType as unknown as never,
-        serverSeedHash: 'hash-' + roundId,
+        serverSeedHash,
         status: 'waiting',
       },
     });
@@ -77,6 +82,7 @@ export class GameEngineService extends EventEmitter {
     this.countdown = 5;
 
     this.emit('round:waiting', {
+      roundId: round.id,
       roundNumber: round.roundNumber,
       countdown: this.countdown,
     });
@@ -84,6 +90,7 @@ export class GameEngineService extends EventEmitter {
     const countdownInterval = setInterval(() => {
       this.countdown -= 1;
       this.emit('round:waiting', {
+        roundId: round.id,
         roundNumber: round.roundNumber,
         countdown: this.countdown,
       });
@@ -105,6 +112,7 @@ export class GameEngineService extends EventEmitter {
     });
 
     this.emit('round:started', {
+      roundId: this.currentRound.id,
       roundNumber: this.currentRound.roundNumber,
       startedAt: new Date(),
     });
@@ -114,7 +122,11 @@ export class GameEngineService extends EventEmitter {
       const elapsed = (Date.now() - this.currentRound.startTime) / 1000;
       this.multiplier = parseFloat(Math.exp(elapsed * 0.06).toFixed(2));
       this.roundsService.currentMultiplier = this.multiplier;
-      this.emit('round:multiplier', { multiplier: this.multiplier });
+      this.emit('round:multiplier', {
+        roundId: this.currentRound.id,
+        roundNumber: this.currentRound.roundNumber,
+        multiplier: this.multiplier,
+      });
 
       void this.checkAutoCashouts();
 
@@ -162,9 +174,17 @@ export class GameEngineService extends EventEmitter {
     this.phase = 'crashed';
     if (!this.currentRound) return;
 
+    const roundRecord = await this.prisma.round.findUnique({
+      where: { id: this.currentRound.id },
+    });
+
     await this.prisma.round.update({
       where: { id: this.currentRound.id },
-      data: { status: 'crashed', endedAt: new Date() },
+      data: {
+        status: 'crashed',
+        endedAt: new Date(),
+        serverSeed: this.roundsService.getServerSeed(),
+      },
     });
 
     // Mark all active bets as lost
@@ -183,9 +203,10 @@ export class GameEngineService extends EventEmitter {
     }
 
     this.emit('round:crashed', {
+      roundId: this.currentRound.id,
       roundNumber: this.currentRound.roundNumber,
       crashPoint: this.currentRound.crashPoint,
-      crashType: 'post',
+      crashType: roundRecord?.crashType ?? 'post',
     });
 
     // Emit leaderboard update

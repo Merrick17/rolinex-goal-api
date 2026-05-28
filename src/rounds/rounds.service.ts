@@ -15,6 +15,17 @@ export class RoundsService {
     this.serverSeed = crypto.randomBytes(32).toString('hex');
   }
 
+  getServerSeed(): string {
+    return this.serverSeed;
+  }
+
+  getServerSeedHash(roundId: string): string {
+    return crypto
+      .createHash('sha256')
+      .update(`${this.serverSeed}:${roundId}`)
+      .digest('hex');
+  }
+
   generateCrashPoint(roundId: string): {
     crashPoint: number;
     crashType: string;
@@ -34,11 +45,65 @@ export class RoundsService {
     return { crashPoint, crashType };
   }
 
+  /** Recompute crash outcome from a revealed server seed (provably fair check). */
+  static verifyRoundOutcome(
+    serverSeed: string,
+    roundId: string,
+    expectedCrashPoint: number,
+    expectedCrashType: string,
+    expectedHash: string,
+  ): { valid: boolean; crashPoint: number; crashType: string; serverSeedHash: string } {
+    const hmac = crypto
+      .createHmac('sha256', serverSeed)
+      .update(roundId)
+      .digest('hex');
+    const hashPrefix = parseInt(hmac.slice(0, 8), 16);
+    const probability = hashPrefix / 0xffffffff;
+    const crashPoint = Math.max(
+      1.0,
+      +(0.97 * (1 / (1 - probability))).toFixed(2),
+    );
+    const types = ['post', 'miss', 'save'];
+    const crashType = types[hashPrefix % types.length];
+    const serverSeedHash = crypto
+      .createHash('sha256')
+      .update(`${serverSeed}:${roundId}`)
+      .digest('hex');
+    const valid =
+      serverSeedHash === expectedHash &&
+      crashPoint === expectedCrashPoint &&
+      crashType === expectedCrashType;
+    return { valid, crashPoint, crashType, serverSeedHash };
+  }
+
   async getCurrentRound() {
     return this.prisma.round.findFirst({
       where: { status: { in: ['waiting', 'flying'] } },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async getFairnessProof(roundId: string) {
+    const round = await this.prisma.round.findUnique({ where: { id: roundId } });
+    if (!round || round.status !== 'crashed' || !round.serverSeed) {
+      return null;
+    }
+    const verification = RoundsService.verifyRoundOutcome(
+      round.serverSeed,
+      round.id,
+      Number(round.crashPoint),
+      round.crashType,
+      round.serverSeedHash,
+    );
+    return {
+      roundId: round.id,
+      roundNumber: round.roundNumber,
+      serverSeed: round.serverSeed,
+      serverSeedHash: round.serverSeedHash,
+      crashPoint: Number(round.crashPoint),
+      crashType: round.crashType,
+      verification,
+    };
   }
 
   async getHistory(page: number, limit: number) {

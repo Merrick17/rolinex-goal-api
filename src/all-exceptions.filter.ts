@@ -33,7 +33,17 @@ export class AllExceptionsFilter implements ExceptionFilter {
           details = obj.details as Record<string, unknown>;
       }
     } else if (exception instanceof Error) {
-      message = exception.message;
+      message =
+        process.env.NODE_ENV === 'production'
+          ? 'An unexpected error occurred'
+          : exception.message;
+    }
+
+    if (
+      process.env.NODE_ENV === 'production' &&
+      status === HttpStatus.INTERNAL_SERVER_ERROR
+    ) {
+      message = 'An unexpected error occurred';
     }
 
     if (status === HttpStatus.BAD_REQUEST)

@@ -30,6 +30,9 @@ export class BetsService {
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new BadRequestException('User not found');
+    if (user.accountFrozen) {
+      throw new BadRequestException('Account is suspended');
+    }
     if (Number(user.balance) < amount) {
       throw new BadRequestException('Insufficient balance');
     }
@@ -62,6 +65,7 @@ export class BetsService {
           amount: -amount,
           balanceAfter: newBalance,
           referenceId: null,
+          txStatus: 'completed',
         },
       }),
     ]);
@@ -73,6 +77,7 @@ export class BetsService {
       amount: Number(bet.amount),
       autoCashout: bet.autoCashout ? Number(bet.autoCashout) : null,
       status: bet.status,
+      newBalance,
       createdAt: bet.createdAt,
     };
   }
@@ -91,7 +96,11 @@ export class BetsService {
     );
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new BadRequestException('User not found');
-    const updatedBalance = Number(Number(user.balance).toFixed(2)) + winnings;
+    if (user.accountFrozen) {
+      throw new BadRequestException('Account is suspended');
+    }
+
+    const updatedBalance = Number((Number(user.balance) + winnings).toFixed(2));
 
     await this.prisma.$transaction([
       this.prisma.bet.update({
@@ -114,12 +123,13 @@ export class BetsService {
           amount: winnings,
           balanceAfter: updatedBalance,
           referenceId: null,
+          txStatus: 'completed',
         },
       }),
     ]);
 
     return {
-      betId: betId,
+      betId,
       cashoutMultiplier: currentMultiplier,
       winnings,
       newBalance: updatedBalance,

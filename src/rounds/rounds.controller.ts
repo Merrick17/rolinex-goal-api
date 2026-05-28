@@ -1,4 +1,10 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Query,
+  NotFoundException,
+} from '@nestjs/common';
 import { RoundsService } from './rounds.service';
 
 @Controller('api/rounds')
@@ -16,6 +22,7 @@ export class RoundsController {
       multiplier:
         round.status === 'flying' ? this.roundsService.currentMultiplier : null,
       startedAt: round.startedAt,
+      serverSeedHash: round.serverSeedHash,
       crashPoint: null,
     };
   }
@@ -23,6 +30,14 @@ export class RoundsController {
   @Get('history')
   async history(@Query('page') page = '1', @Query('limit') limit = '20') {
     return this.roundsService.getHistory(Number(page), Number(limit));
+  }
+
+  /** Provably fair: revealed server seed + verification (only after round crashed). */
+  @Get(':roundId/proof')
+  async fairnessProof(@Param('roundId') roundId: string) {
+    const proof = await this.roundsService.getFairnessProof(roundId);
+    if (!proof) throw new NotFoundException('Proof not available yet');
+    return proof;
   }
 
   @Get(':roundId')

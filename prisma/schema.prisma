@@ -1,5 +1,7 @@
 generator client {
-  provider = "prisma-client-js"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
 }
 
 datasource db {
@@ -7,22 +9,22 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  username     String   @unique @db.VarChar(20)
-  email        String   @unique @db.VarChar(255)
-  passwordHash String   @map("password_hash") @db.VarChar(255)
-  balance      Decimal  @default(0) @db.Decimal(12, 2)
-  currency     String   @default("AED") @db.VarChar(3)
-  kycStatus    KycStatus @default(pending) @map("kyc_status")
-  referralCode String?   @unique @map("referral_code") @db.VarChar(20)
-  referredBy   String?   @map("referred_by")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
+  id            String   @id @default(uuid())
+  username      String   @unique @db.VarChar(20)
+  email         String   @unique @db.VarChar(255)
+  passwordHash  String   @map("password_hash") @db.VarChar(255)
+  balance       Decimal  @default(0) @db.Decimal(12, 2)
+  currency      String   @default("USD") @db.VarChar(3)
+  accountFrozen Boolean  @default(false) @map("account_frozen")
+  referralCode  String?  @unique @map("referral_code") @db.VarChar(20)
+  referredBy    String?  @map("referred_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
 
   bets          Bet[]
   transactions  Transaction[]
-  referralsMade User[]        @relation("UserReferrals")
-  referrer      User?          @relation("UserReferrals", fields: [referredBy], references: [id])
+  referralsMade User[]    @relation("UserReferrals")
+  referrer      User?     @relation("UserReferrals", fields: [referredBy], references: [id])
 
   @@map("users")
 }
@@ -33,6 +35,7 @@ model Round {
   crashPoint     Decimal     @map("crash_point") @db.Decimal(10, 2)
   crashType      CrashType   @map("crash_type")
   serverSeedHash String      @map("server_seed_hash") @db.VarChar(64)
+  serverSeed     String?     @map("server_seed") @db.Text
   status         RoundStatus @default(waiting)
   startedAt      DateTime?   @map("started_at")
   endedAt        DateTime?   @map("ended_at")
@@ -44,16 +47,16 @@ model Round {
 }
 
 model Bet {
-  id               String    @id @default(uuid())
-  userId           String    @map("user_id")
-  roundId          String    @map("round_id")
-  amount           Decimal   @db.Decimal(10, 2)
-  autoCashout      Decimal?  @map("auto_cashout") @db.Decimal(10, 2)
-  cashoutMultiplier Decimal? @map("cashout_multiplier") @db.Decimal(10, 2)
-  winnings         Decimal?  @db.Decimal(12, 2)
-  status           BetStatus @default(active)
-  createdAt        DateTime  @default(now()) @map("created_at")
-  cashedOutAt      DateTime? @map("cashed_out_at")
+  id                String    @id @default(uuid())
+  userId            String    @map("user_id")
+  roundId           String    @map("round_id")
+  amount            Decimal   @db.Decimal(10, 2)
+  autoCashout       Decimal?  @map("auto_cashout") @db.Decimal(10, 2)
+  cashoutMultiplier Decimal?  @map("cashout_multiplier") @db.Decimal(10, 2)
+  winnings          Decimal?  @db.Decimal(12, 2)
+  status            BetStatus @default(active)
+  createdAt         DateTime  @default(now()) @map("created_at")
+  cashedOutAt       DateTime? @map("cashed_out_at")
 
   user  User  @relation(fields: [userId], references: [id])
   round Round @relation(fields: [roundId], references: [id])
@@ -62,17 +65,26 @@ model Bet {
 }
 
 model Transaction {
-  id          String          @id @default(uuid())
-  userId      String          @map("user_id")
-  type        TransactionType
-  amount      Decimal         @db.Decimal(12, 2)
-  balanceAfter Decimal        @map("balance_after") @db.Decimal(12, 2)
-  referenceId String?         @map("reference_id")
-  createdAt   DateTime        @default(now()) @map("created_at")
+  id           String              @id @default(uuid())
+  userId       String              @map("user_id")
+  type         TransactionType
+  amount       Decimal             @db.Decimal(12, 2)
+  balanceAfter Decimal             @map("balance_after") @db.Decimal(12, 2)
+  referenceId  String?             @map("reference_id")
+  txStatus     TransactionTxStatus @default(completed) @map("tx_status")
+  createdAt    DateTime            @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id])
 
   @@map("transactions")
+}
+
+model WebhookDelivery {
+  id        String   @id @default(uuid())
+  eventKey  String   @unique @map("event_key") @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("webhook_deliveries")
 }
 
 model RefreshToken {
@@ -83,12 +95,6 @@ model RefreshToken {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("refresh_tokens")
-}
-
-enum KycStatus {
-  pending
-  verified
-  rejected
 }
 
 enum CrashType {
@@ -109,9 +115,17 @@ enum BetStatus {
   lost
 }
 
+enum TransactionTxStatus {
+  pending
+  completed
+  failed
+}
+
 enum TransactionType {
   deposit
   withdraw
   bet
   win
+  admin_credit
+  admin_debit
 }

@@ -14,6 +14,9 @@ import { BetsModule } from './bets/bets.module';
 import { LeaderboardModule } from './leaderboard/leaderboard.module';
 import { ReferralsModule } from './referrals/referrals.module';
 import { GameModule } from './game/game.module';
+import { AdminModule } from './admin/admin.module';
+import { HealthModule } from './health/health.module';
+import { PlatformModule } from './platform/platform.module';
 
 @Module({
   imports: [
@@ -30,6 +33,9 @@ import { GameModule } from './game/game.module';
     LeaderboardModule,
     ReferralsModule,
     GameModule,
+    AdminModule,
+    PlatformModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [
