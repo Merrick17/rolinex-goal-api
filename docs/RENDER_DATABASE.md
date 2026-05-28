@@ -1,43 +1,49 @@
-# Render: fix “DATABASE_URL is not set”
+# Render deployment (API)
 
-The API Docker image **does not** embed a database URL. Render must inject `DATABASE_URL` at runtime.
+## Why deploys failed
 
-## Quick fix (existing web service)
+1. **`DATABASE_URL` missing** — Postgres was not linked to the web service (common when using Docker without Blueprint env).
+2. **Root `Dockerfile` auto-detected** — Render built Docker instead of using `render.yaml` Node settings, so `fromDatabase` env vars were never applied.
+3. **Invalid blueprint property** — `internalConnectionString` is not valid; use `connectionString` (private network URL).
 
-1. Open [Render Dashboard](https://dashboard.render.com/)
-2. Open your **Postgres** instance (`prolinex-db` or similar) — note that it exists and is **Available**
-3. Open your **Web Service** (`prolinex-goal-api`)
-4. Go to **Environment**
-5. Click **Add Environment Variable** → **Add from database**
-6. Select your Postgres database
-7. Set the key to **`DATABASE_URL`** (Render sets the value to the internal URL)
-8. Click **Save Changes**
-9. **Manual Deploy** the web service
+## Recommended fix (cleanest)
 
-`DIRECT_URL` is optional; the entrypoint copies `DATABASE_URL` into `DIRECT_URL` when it is missing.
+### Option A — New Blueprint (best)
 
-## Also set (if not already)
+1. Delete the old **Docker** web service on Render (keep Postgres if you want the data).
+2. [Render Dashboard](https://dashboard.render.com/) → **New** → **Blueprint**
+3. Connect **Merrick17/rolinex-goal-api**
+4. When prompted, set:
+   - `CORS_ORIGIN` = `https://prolinexgoal.vercel.app`
+   - `API_PUBLIC_URL` = `https://<your-service>.onrender.com`
+   - `SENTINELGATE_SUCCESS_URL` / `SENTINELGATE_CANCEL_URL` = your Vercel wallet URLs
+5. Wait for deploy (migrations run via `npm run start:render`).
+6. **Shell**: `npx ts-node prisma/seed-demo.ts`
 
-| Variable | Example |
-|----------|---------|
-| `CORS_ORIGIN` | `https://prolinexgoal.vercel.app` |
-| `API_PUBLIC_URL` | `https://YOUR-SERVICE.onrender.com` |
-| `SENTINELGATE_SUCCESS_URL` | `https://prolinexgoal.vercel.app/wallet/deposit/success` |
-| `SENTINELGATE_CANCEL_URL` | `https://prolinexgoal.vercel.app/wallet/deposit/cancel` |
+### Option B — Keep existing web service
 
-## New stack from Blueprint
+1. **Environment** → **Add Environment Variable** → **Add from database**
+2. Select Postgres → key **`DATABASE_URL`**
+3. **Settings** → change **Runtime** from Docker to **Node**
+4. Set:
+   - **Build command**: `npm ci && npm run build`
+   - **Start command**: `npm run start:render`
+5. **Save** → **Manual Deploy**
 
-1. **New** → **Blueprint**
-2. Connect repo `Merrick17/rolinex-goal-api`
-3. Apply `render.yaml` (creates DB + web service with `DATABASE_URL` linked)
-4. Fill sync env vars when prompted (`CORS_ORIGIN`, `API_PUBLIC_URL`, …)
+Do **not** set `PORT` manually — Render injects it.
 
-## After a successful deploy
+## Verify
 
-Render **Shell** on the web service:
+Logs should show:
 
-```bash
-npx ts-node prisma/seed-demo.ts
+```text
+[render-migrate] Applying migrations...
+[render-migrate] Migrations OK.
+Application is running on: http://localhost:10000
 ```
 
-Demo login: `demo@prolinexgoal.demo` / `DemoGoal26!`
+Health: `https://YOUR-SERVICE.onrender.com/api/health/ready`
+
+## Demo user
+
+`demo@prolinexgoal.demo` / `DemoGoal26!`

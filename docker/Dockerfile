@@ -1,3 +1,4 @@
+# Local / docker-compose only — Render uses native Node (see render.yaml).
 # syntax=docker/dockerfile:1
 
 FROM node:22-bookworm-slim AS deps
@@ -6,7 +7,6 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-c
   && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json prisma.config.ts ./
 COPY prisma ./prisma
-# Prisma 7 config resolves DIRECT_URL at generate time (overridden at runtime by compose)
 ENV DATABASE_URL="postgresql://build:build@127.0.0.1:5432/build"
 ENV DIRECT_URL="postgresql://build:build@127.0.0.1:5432/build"
 RUN npm ci
@@ -33,19 +33,19 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-c
 
 COPY package.json package-lock.json prisma.config.ts ./
 COPY prisma ./prisma
-# Dummy URLs only for `postinstall` / prisma generate during install — not baked into runtime env.
+COPY scripts ./scripts
 RUN DATABASE_URL="postgresql://build:build@127.0.0.1:5432/build" \
     DIRECT_URL="postgresql://build:build@127.0.0.1:5432/build" \
     npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/src/generated ./src/generated
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
-RUN chmod +x /app/docker-entrypoint.sh \
+RUN chmod +x /app/docker-entrypoint.sh /app/scripts/*.sh \
   && chown -R nestjs:nodejs /app
 
 USER nestjs
 EXPOSE 3001
-HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
-  CMD curl -fsS http://127.0.0.1:3001/api/health || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD sh -c 'curl -fsS "http://127.0.0.1:${PORT:-3001}/api/health" || exit 1'
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
