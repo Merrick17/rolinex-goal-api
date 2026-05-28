@@ -33,9 +33,10 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-c
 
 COPY package.json package-lock.json prisma.config.ts ./
 COPY prisma ./prisma
-ENV DATABASE_URL="postgresql://build:build@127.0.0.1:5432/build"
-ENV DIRECT_URL="postgresql://build:build@127.0.0.1:5432/build"
-RUN npm ci --omit=dev
+# Dummy URLs only for `postinstall` / prisma generate during install — not baked into runtime env.
+RUN DATABASE_URL="postgresql://build:build@127.0.0.1:5432/build" \
+    DIRECT_URL="postgresql://build:build@127.0.0.1:5432/build" \
+    npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/src/generated ./src/generated
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
