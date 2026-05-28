@@ -5,17 +5,28 @@ log() {
   echo "[render-migrate] $*"
 }
 
+# DEMO: same Supabase URLs as src/config/demo-hardcoded.ts (when Render has no DATABASE_URL)
+apply_demo_db_defaults() {
+  if [ -n "$DATABASE_URL" ]; then
+    return 0
+  fi
+  log "DATABASE_URL unset — applying hardcoded demo Supabase URL"
+  export DATABASE_URL='postgresql://postgres.icwrnjvvvtgfwioszvts:01161590Safwen@@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true'
+  export DIRECT_URL='postgresql://postgres.icwrnjvvvtgfwioszvts:01161590Safwen@@aws-0-eu-west-1.pooler.supabase.com:5432/postgres'
+}
+
+apply_demo_db_defaults
+
 if [ -z "$DIRECT_URL" ] && [ -n "$DATABASE_URL" ]; then
   export DIRECT_URL="$DATABASE_URL"
 fi
 
 if [ -z "$DATABASE_URL" ] && [ -z "$DIRECT_URL" ]; then
-  log "ERROR: DATABASE_URL is not set."
-  log "Render → Web Service → Environment → Add from database → key DATABASE_URL"
+  log "ERROR: DATABASE_URL is not set and demo defaults failed."
   exit 1
 fi
 
-# External Render Postgres URLs need SSL; internal dpg-* hostnames do not.
+# External URLs may need SSL; internal Render dpg-* hosts do not.
 maybe_ssl() {
   url="$1"
   case "$url" in
