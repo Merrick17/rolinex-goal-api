@@ -1,4 +1,4 @@
-# Local / docker-compose only — Render uses native Node (see render.yaml).
+# Production image (Render Docker + local docker-compose).
 # syntax=docker/dockerfile:1
 
 FROM node:22-bookworm-slim AS deps
@@ -45,7 +45,7 @@ RUN chmod +x /app/docker-entrypoint.sh /app/scripts/*.sh \
 
 USER nestjs
 EXPOSE 3001
-HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-  CMD sh -c 'curl -fsS "http://127.0.0.1:${PORT:-3001}/api/health" || exit 1'
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
+  CMD sh -c 'curl -fsS "http://127.0.0.1:${PORT:-10000}/api/health" || exit 1'
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]

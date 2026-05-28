@@ -14,6 +14,16 @@ npm run seed:demo
 
 ## Manual service (if Blueprint already exists)
 
+### Docker runtime (your current setup)
+
+| Setting | Value |
+|---------|--------|
+| **Runtime** | Docker |
+| **Dockerfile path** | `./Dockerfile` (repo root) |
+| **Health check** | `/api/health` |
+
+### Node runtime (alternative)
+
 | Setting | Value |
 |---------|--------|
 | **Runtime** | Node |

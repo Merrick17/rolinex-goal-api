@@ -1,5 +1,5 @@
 # Render Blueprint — Merrick17/rolinex-goal-api
-# Dashboard → New → Blueprint → connect repo (recommended).
+# Supports Docker (default on Render) or Node — pick one block below.
 
 databases:
   - name: prolinex-db
@@ -9,14 +9,14 @@ databases:
     region: frankfurt
 
 services:
+  # Docker (matches Render "Docker" runtime — needs ./Dockerfile at repo root)
   - type: web
     name: prolinex-goal-api
-    runtime: node
+    runtime: docker
     plan: free
     region: frankfurt
-    buildCommand: npm ci && npm run build
-    preDeployCommand: sh scripts/render-migrate.sh
-    startCommand: node dist/src/main.js
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
